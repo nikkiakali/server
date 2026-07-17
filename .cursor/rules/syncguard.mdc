@@ -1,0 +1,34 @@
+---
+description: SyncGuard prototype constraints — architecture, isolation, and agent workflow
+alwaysApply: true
+---
+
+# SyncGuard
+
+SyncGuard detects drift between runtime API behavior and published OpenAPI docs. It has two layers:
+
+1. **Deterministic comparison** — code compares concrete runtime vs documented values and decides whether drift exists.
+2. **Cursor SDK analysis** — the SDK consumes a structured finding, inspects repo context, explains root cause, and proposes remediation.
+
+## Architecture
+
+- The Cursor SDK must remain a central, meaningful part of SyncGuard — not a thin wrapper or afterthought.
+- An LLM must **never** be the source of truth for whether concrete values match. Only deterministic code decides match/mismatch.
+
+## Scope & isolation
+
+- Keep all prototype code under `syncguard/`.
+- Do not modify existing Gotify source or docs unless a task explicitly authorizes a remediation change.
+- Do not repair the intentional pagination drift unless explicitly instructed.
+
+## Implementation style
+
+- Prefer small, understandable TypeScript components with focused tests.
+- Avoid unrelated refactoring and unnecessary abstractions.
+- Inspect existing repository conventions before making changes.
+- Explain proposed changes before implementing substantial work.
+
+## Secrets & generated artifacts
+
+- Never commit credentials, API keys, real environment files (e.g. `.env`), or generated dependency folders.
+- A sanitized `.env.example` with placeholder variable names is allowed.
