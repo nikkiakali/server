@@ -119,7 +119,7 @@ func buildWithPaging(ctx *gin.Context, paging *pagingParams, messages []*model.M
 }
 
 func withPaging(ctx *gin.Context, f func(pagingParams *pagingParams)) {
-	params := &pagingParams{Limit: 100}
+	params := &pagingParams{Limit: 50}
 	if err := ctx.MustBindWith(params, binding.Query); err == nil {
 		f(params)
 	}
