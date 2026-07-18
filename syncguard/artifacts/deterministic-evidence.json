@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "checkId": "gotify-pagination-default",
+  "baseRef": "demo-00-baseline",
+  "status": "drift_detected",
+  "runtimeChange": {
+    "source": {
+      "file": "api/message.go",
+      "symbol": "withPaging",
+      "field": "Limit"
+    },
+    "baselineValue": 100,
+    "currentValue": 50,
+    "baselineLine": 122,
+    "currentLine": 122
+  },
+  "affectedOperations": [
+    {
+      "operationId": "getAppMessages",
+      "method": "GET",
+      "path": "/application/{id}/message",
+      "runtimeDefault": 50,
+      "annotationDefault": 100,
+      "generatedSpecDefault": 100,
+      "status": "drift_detected"
+    },
+    {
+      "operationId": "getMessages",
+      "method": "GET",
+      "path": "/message",
+      "runtimeDefault": 50,
+      "annotationDefault": 100,
+      "generatedSpecDefault": 100,
+      "status": "drift_detected"
+    }
+  ]
+}

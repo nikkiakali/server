@@ -1,0 +1,9 @@
+package api
+
+func withPaging(ctx *gin.Context, f func(pagingParams *pagingParams)) {
+	params := &pagingParams{
+		Limit: 50,
+		Since: 0,
+	}
+	f(params)
+}

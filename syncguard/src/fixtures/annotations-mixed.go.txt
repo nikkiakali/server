@@ -1,0 +1,27 @@
+package api
+
+// swagger:operation GET /message message getMessages
+//
+//	---
+//	parameters:
+//	- name: limit
+//	  in: query
+//	  default: 50
+//	  type: integer
+//	responses:
+//	  200:
+//	    description: Ok
+func (a *MessageAPI) GetMessages(ctx *gin.Context) {}
+
+// swagger:operation GET /application/{id}/message message getAppMessages
+//
+//	---
+//	parameters:
+//	- name: limit
+//	  in: query
+//	  default: 100
+//	  type: integer
+//	responses:
+//	  200:
+//	    description: Ok
+func (a *MessageAPI) GetMessagesWithApplication(ctx *gin.Context) {}

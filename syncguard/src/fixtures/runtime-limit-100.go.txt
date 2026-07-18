@@ -1,0 +1,13 @@
+package api
+
+type pagingParams struct {
+	Limit int
+	Since uint
+}
+
+func withPaging(ctx *gin.Context, f func(pagingParams *pagingParams)) {
+	params := &pagingParams{Limit: 100}
+	if err := ctx.MustBindWith(params, binding.Query); err == nil {
+		f(params)
+	}
+}

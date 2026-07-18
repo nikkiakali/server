@@ -1,0 +1,32 @@
+{
+  "swagger": "2.0",
+  "info": { "title": "fixture", "version": "0" },
+  "paths": {
+    "/application/{id}/message": {
+      "get": {
+        "operationId": "getAppMessages",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "default": 100
+          }
+        ]
+      }
+    },
+    "/message": {
+      "get": {
+        "operationId": "getMessages",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "default": 50
+          }
+        ]
+      }
+    }
+  }
+}

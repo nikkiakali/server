@@ -8,7 +8,9 @@
   },
   "scripts": {
     "sdk-smoke": "tsx scripts/sdk-smoke.ts",
-    "typecheck": "tsc --noEmit"
+    "detect-drift": "tsx src/detect.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.23"

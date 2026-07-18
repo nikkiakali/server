@@ -1,0 +1,47 @@
+package api
+
+// GetMessages returns all messages from a user.
+// swagger:operation GET /message message getMessages
+//
+// Return all messages.
+//
+//	---
+//	produces: [application/json]
+//	parameters:
+//	- name: limit
+//	  in: query
+//	  description: the maximal amount of messages to return
+//	  required: false
+//	  maximum: 200
+//	  minimum: 1
+//	  default: 100
+//	  type: integer
+//	responses:
+//	  200:
+//	    description: Ok
+func (a *MessageAPI) GetMessages(ctx *gin.Context) {}
+
+// GetMessagesWithApplication returns all messages from a specific application.
+// swagger:operation GET /application/{id}/message message getAppMessages
+//
+// Return all messages from a specific application.
+//
+//	---
+//	produces: [application/json]
+//	parameters:
+//	- name: id
+//	  in: path
+//	  required: true
+//	  type: integer
+//	- name: limit
+//	  in: query
+//	  description: the maximal amount of messages to return
+//	  required: false
+//	  maximum: 200
+//	  minimum: 1
+//	  default: 100
+//	  type: integer
+//	responses:
+//	  200:
+//	    description: Ok
+func (a *MessageAPI) GetMessagesWithApplication(ctx *gin.Context) {}
