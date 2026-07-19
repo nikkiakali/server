@@ -25,8 +25,10 @@ export class SdkAnalysisError extends Error {
   }
 }
 
-export const REQUIRED_REPORT_HEADINGS = [
-  "# SyncGuard Drift Report",
+export const SYNCHRONIZATION_CLOSURE_REPORT_TITLE =
+  "# SyncGuard Synchronization Closure Report" as const;
+
+const REQUIRED_REPORT_SECTION_HEADINGS = [
   "## Executive Summary",
   "## Proven Drift",
   "## Impact",
@@ -35,6 +37,19 @@ export const REQUIRED_REPORT_HEADINGS = [
   "## Runbook Update",
   "## Assumptions and Confidence",
 ] as const;
+
+export const REQUIRED_REPORT_HEADINGS = [
+  "# SyncGuard Drift Report",
+  ...REQUIRED_REPORT_SECTION_HEADINGS,
+] as const;
+
+export const SYNCHRONIZATION_CLOSURE_REPORT_HEADINGS = [
+  SYNCHRONIZATION_CLOSURE_REPORT_TITLE,
+  ...REQUIRED_REPORT_SECTION_HEADINGS,
+] as const;
+
+const CONFIG_SYNCHRONIZED_CLOSURE_BOUNDARY =
+  "No further remediation is required. This report did not modify files; the synchronized state was supplied by deterministic evidence.";
 
 const ANALYSIS_STATUSES: ReadonlySet<string> = new Set([
   "no_relevant_change",
@@ -500,10 +515,10 @@ function buildConfigSynchronizedSectionInstructions(): string {
   return `- Executive Summary: one short paragraph stating that configuration documentation is synchronized (status synchronized) for the runtime default and operator-facing env-example documentation. Name the checkId and baseRef from the evidence.
 - Proven Drift: verified runtime change — describe the historical runtime default change (baselineValue vs currentValue) for runtimeChange.source.field in runtimeChange.source.file (runtimeChange.source.symbol), using only evidence fields.
 - Impact: synchronized operational documentation — state that documentation.documentedDefault in documentation.file (environment variable documentation.envVariable) now matches runtimeChange.currentValue. Do not mention endpoints, Swagger annotations, or generated specs.
-- Remediation Recommendation: state clearly that no further remediation is required for this synchronized configuration check. Do not propose env-example edits for values already synchronized in the evidence.
+- Remediation Recommendation: state clearly that no further remediation is required for this synchronized configuration check. Use this accurate boundary verbatim or in substance: "${CONFIG_SYNCHRONIZED_CLOSURE_BOUNDARY}" Do not claim that no documentation repair was applied or that remediation never occurred; a human-approved repair may have preceded this closure evidence. Distinguish that this report did not modify files from any earlier human-approved documentation repair. Do not propose env-example edits for values already synchronized in the evidence.
 - Verification Steps: deterministic closure evidence — recommend re-running SyncGuard check-sync (or equivalent) to confirm the check remains synchronized. Do not recommend remediation for checks already synchronized in the evidence.
 - Runbook Update: what operators should record about verified synchronization between runtime defaults and operator-facing configuration documentation. Note that future runtime changes require re-checking alignment.
-- Assumptions and Confidence: separate deterministic facts from SDK interpretation. Do not claim that files were inspected or edited. Describe file paths and values only as facts or recommendations derived from the supplied evidence.`;
+- Assumptions and Confidence: separate deterministic facts from SDK interpretation. Do not claim that you inspected repository files or that this report modified files. Do not claim that no prior documentation repair occurred. Describe file paths and values only as facts derived from the supplied evidence.`;
 }
 
 function buildOpenApiAnalysisPrompt(evidence: Evidence): string {
@@ -559,15 +574,24 @@ Write the report now.`;
 
 function buildConfigEnvAnalysisPrompt(evidence: ConfigEnvEvidence): string {
   const evidenceJson = serializeConfigEnvEvidence(evidence).trimEnd();
-  const headingList = REQUIRED_REPORT_HEADINGS.map((h) => `- ${h}`).join("\n");
-  const sectionInstructions =
-    evidence.status === "synchronized"
-      ? buildConfigSynchronizedSectionInstructions()
-      : buildConfigDriftSectionInstructions();
-  const taskLabel =
-    evidence.status === "synchronized"
-      ? "configuration synchronization closure"
-      : "configuration documentation drift analysis";
+  const isSynchronized = evidence.status === "synchronized";
+  const reportHeadings = isSynchronized
+    ? SYNCHRONIZATION_CLOSURE_REPORT_HEADINGS
+    : REQUIRED_REPORT_HEADINGS;
+  const headingList = reportHeadings.map((h) => `- ${h}`).join("\n");
+  const sectionInstructions = isSynchronized
+    ? buildConfigSynchronizedSectionInstructions()
+    : buildConfigDriftSectionInstructions();
+  const taskLabel = isSynchronized
+    ? "configuration synchronization closure"
+    : "configuration documentation drift analysis";
+  const synchronizedHardRules = isSynchronized
+    ? `
+- Use document title \`${SYNCHRONIZATION_CLOSURE_REPORT_TITLE}\` (not \`# SyncGuard Drift Report\`).
+- Do not claim that no documentation repair was applied or that remediation never occurred; a human-approved repair may have preceded this synchronized closure evidence.
+- State this accurate boundary in Remediation Recommendation (verbatim or in substance): "${CONFIG_SYNCHRONIZED_CLOSURE_BOUNDARY}"
+- Distinguish that this report did not modify files from any earlier human-approved documentation repair that may have preceded closure.`
+    : "";
   const { runtimeChange, documentation } = evidence;
 
   return `You are SyncGuard's configuration-documentation analyst.
@@ -610,7 +634,7 @@ ${evidenceJson}
 - Identify the smallest human-reviewable documentation repair when status is drift_detected.
 - Refer to ${documentation.file} as operator-facing configuration documentation.
 - Do not use Swagger, endpoint, annotation, or generated-spec terminology.
-- Clearly distinguish a proposed repair from an applied repair.
+- Clearly distinguish a proposed repair from an applied repair.${synchronizedHardRules}
 - Separate proven facts (from the JSON) from recommendations (your interpretation).
 - Do not inspect unrelated repository files; rely on the supplied evidence.
 - Do not run shell commands that change the working tree.
@@ -646,6 +670,13 @@ export function normalizeReportMarkdown(raw: string): string {
   return text;
 }
 
+function resolveReportHeadings(report: string): readonly string[] {
+  if (report.includes(SYNCHRONIZATION_CLOSURE_REPORT_TITLE)) {
+    return SYNCHRONIZATION_CLOSURE_REPORT_HEADINGS;
+  }
+  return REQUIRED_REPORT_HEADINGS;
+}
+
 /** Validate the final Markdown report; throws SdkAnalysisError on failure. */
 export function validateDriftReport(markdown: string): string {
   const report = normalizeReportMarkdown(markdown);
@@ -653,7 +684,9 @@ export function validateDriftReport(markdown: string): string {
     throw new SdkAnalysisError("SDK report is empty");
   }
 
-  const missing = REQUIRED_REPORT_HEADINGS.filter((heading) => {
+  const reportHeadings = resolveReportHeadings(report);
+
+  const missing = reportHeadings.filter((heading) => {
     const pattern = new RegExp(`^${escapeRegExp(heading)}\\s*$`, "m");
     return !pattern.test(report);
   });
@@ -665,7 +698,7 @@ export function validateDriftReport(markdown: string): string {
 
   // Enforce heading order for the main title and the ## sections.
   let cursor = 0;
-  for (const heading of REQUIRED_REPORT_HEADINGS) {
+  for (const heading of reportHeadings) {
     const idx = report.indexOf(heading, cursor);
     if (idx === -1) {
       throw new SdkAnalysisError(`SDK report is missing required heading: ${heading}`);

@@ -6,6 +6,8 @@ import { describe, it } from "node:test";
 
 import {
   REQUIRED_REPORT_HEADINGS,
+  SYNCHRONIZATION_CLOSURE_REPORT_HEADINGS,
+  SYNCHRONIZATION_CLOSURE_REPORT_TITLE,
   SdkAnalysisError,
   assertUsableAnalysisEvidence,
   assertUsableDriftEvidence,
@@ -157,6 +159,38 @@ Document that runtime pagination defaults in withPaging must stay aligned with s
 
 Deterministic facts: baselineValue 100, currentValue 50, annotationDefault 100, generatedSpecDefault 100.
 SDK interpretation: consumer impact wording and remediation preference.
+`;
+
+const COMPLETE_CONFIG_CLOSURE_REPORT = `# SyncGuard Synchronization Closure Report
+
+## Executive Summary
+
+Configuration documentation is synchronized for check gotify-stream-ping-default against baseRef demo-00-baseline.
+
+## Proven Drift
+
+Runtime PingPeriodSeconds changed from 45 to 60 in config/config.go (Get).
+
+## Impact
+
+GOTIFY_SERVER_STREAM_PINGPERIODSECONDS in gotify-server.env.example documents 60, matching the current runtime default.
+
+## Remediation Recommendation
+
+No further remediation is required. This report did not modify files; the synchronized state was supplied by deterministic evidence. An earlier human-approved documentation repair preceded this closure evidence.
+
+## Verification Steps
+
+Recommendation: re-run \`npm run check-sync\` and confirm status synchronized.
+
+## Runbook Update
+
+Record verified synchronization between runtime defaults and operator-facing configuration documentation.
+
+## Assumptions and Confidence
+
+Deterministic facts: status synchronized, documentedDefault 60, currentValue 60.
+SDK interpretation: maintenance expectations only.
 `;
 
 describe("sdk-analysis evidence loading", () => {
@@ -411,6 +445,12 @@ describe("sdk-analysis report validation", () => {
     assert.ok(report.endsWith("\n"));
   });
 
+  it("accepts a synchronized configuration closure report title", () => {
+    const report = validateDriftReport(COMPLETE_CONFIG_CLOSURE_REPORT);
+    assert.match(report, /^# SyncGuard Synchronization Closure Report/m);
+    assert.ok(report.endsWith("\n"));
+  });
+
   it("rejects an incomplete or empty report", () => {
     assert.throws(() => validateDriftReport(""), /empty/);
     assert.throws(() => validateDriftReport("   "), /empty/);
@@ -482,6 +522,43 @@ describe("sdk-analysis configuration evidence", () => {
     assert.doesNotMatch(prompt, /annotationDefault/);
     assert.doesNotMatch(prompt, /generatedSpecDefault/);
     assert.doesNotMatch(prompt, /affectedOperations/);
+  });
+
+  it("config synchronized prompt requests the closure report title", () => {
+    const prompt = buildAnalysisPrompt(VALID_CONFIG_SYNCHRONIZED_EVIDENCE);
+    assert.ok(prompt.includes(SYNCHRONIZATION_CLOSURE_REPORT_TITLE));
+    assert.match(
+      prompt,
+      /Use document title `# SyncGuard Synchronization Closure Report` \(not `# SyncGuard Drift Report`\)/,
+    );
+    for (const heading of SYNCHRONIZATION_CLOSURE_REPORT_HEADINGS) {
+      assert.ok(prompt.includes(heading), `prompt missing heading instruction: ${heading}`);
+    }
+  });
+
+  it("config synchronized prompt forbids claims that no prior repair occurred", () => {
+    const prompt = buildAnalysisPrompt(VALID_CONFIG_SYNCHRONIZED_EVIDENCE);
+    assert.match(
+      prompt,
+      /Do not claim that no documentation repair was applied or that remediation never occurred/i,
+    );
+    assert.match(
+      prompt,
+      /Do not claim that no prior documentation repair occurred/i,
+    );
+    assert.doesNotMatch(prompt, /no repair was applied/i);
+  });
+
+  it("config synchronized prompt distinguishes report read-only role from earlier repair", () => {
+    const prompt = buildAnalysisPrompt(VALID_CONFIG_SYNCHRONIZED_EVIDENCE);
+    assert.match(
+      prompt,
+      /No further remediation is required\. This report did not modify files; the synchronized state was supplied by deterministic evidence\./,
+    );
+    assert.match(
+      prompt,
+      /Distinguish that this report did not modify files from any earlier human-approved documentation repair/i,
+    );
   });
 
   it("rejects contradictory config drift evidence before SDK invocation", () => {
