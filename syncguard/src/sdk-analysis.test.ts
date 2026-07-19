@@ -15,7 +15,7 @@ import {
   parseEvidenceJson,
   validateDriftReport,
 } from "./sdk-analysis.js";
-import type { Evidence } from "./types.js";
+import type { ConfigEnvEvidence, Evidence } from "./types.js";
 
 const VALID_DRIFT_EVIDENCE: Evidence = {
   schemaVersion: 1,
@@ -80,6 +80,50 @@ const VALID_SYNCHRONIZED_EVIDENCE: Evidence = {
       status: "synchronized",
     },
   ],
+};
+
+const VALID_CONFIG_DRIFT_EVIDENCE: ConfigEnvEvidence = {
+  schemaVersion: 1,
+  checkId: "gotify-stream-ping-default",
+  contractKind: "config-env-example",
+  baseRef: "demo-00-baseline",
+  status: "drift_detected",
+  runtimeChange: {
+    source: {
+      file: "config/config.go",
+      symbol: "Get",
+      field: "PingPeriodSeconds",
+    },
+    baselineValue: 45,
+    currentValue: 60,
+  },
+  documentation: {
+    file: "gotify-server.env.example",
+    envVariable: "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
+    documentedDefault: 45,
+  },
+};
+
+const VALID_CONFIG_SYNCHRONIZED_EVIDENCE: ConfigEnvEvidence = {
+  schemaVersion: 1,
+  checkId: "gotify-stream-ping-default",
+  contractKind: "config-env-example",
+  baseRef: "demo-00-baseline",
+  status: "synchronized",
+  runtimeChange: {
+    source: {
+      file: "config/config.go",
+      symbol: "Get",
+      field: "PingPeriodSeconds",
+    },
+    baselineValue: 45,
+    currentValue: 60,
+  },
+  documentation: {
+    file: "gotify-server.env.example",
+    envVariable: "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
+    documentedDefault: 60,
+  },
 };
 
 const COMPLETE_REPORT = `# SyncGuard Drift Report
@@ -379,6 +423,215 @@ describe("sdk-analysis report validation", () => {
 Only one section.
 `),
       /missing required heading/,
+    );
+  });
+});
+
+describe("sdk-analysis configuration evidence", () => {
+  it("accepts valid config drift_detected evidence", () => {
+    const evidence = parseEvidenceJson(JSON.stringify(VALID_CONFIG_DRIFT_EVIDENCE));
+    assertUsableAnalysisEvidence(evidence);
+    assert.equal(evidence.status, "drift_detected");
+    if ("contractKind" in evidence) {
+      assert.equal(evidence.contractKind, "config-env-example");
+    }
+  });
+
+  it("accepts valid config synchronized evidence", () => {
+    assertUsableAnalysisEvidence(VALID_CONFIG_SYNCHRONIZED_EVIDENCE);
+    const evidence = parseEvidenceJson(JSON.stringify(VALID_CONFIG_SYNCHRONIZED_EVIDENCE));
+    assertUsableAnalysisEvidence(evidence);
+    assert.equal(evidence.runtimeChange?.currentValue, 60);
+  });
+
+  it("loads valid config drift evidence from a temporary file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "syncguard-sdk-config-"));
+    const path = join(dir, "evidence-config-drift.json");
+    writeFileSync(path, `${JSON.stringify(VALID_CONFIG_DRIFT_EVIDENCE, null, 2)}\n`, "utf8");
+    const evidence = loadAnalysisEvidence(path);
+    assert.equal(evidence.checkId, "gotify-stream-ping-default");
+  });
+
+  it("config drift prompt contains grounded facts and avoids Swagger terminology", () => {
+    const prompt = buildAnalysisPrompt(VALID_CONFIG_DRIFT_EVIDENCE);
+    assert.match(prompt, /config\/config\.go/);
+    assert.match(prompt, /PingPeriodSeconds/);
+    assert.match(prompt, /gotify-server\.env\.example/);
+    assert.match(prompt, /GOTIFY_SERVER_STREAM_PINGPERIODSECONDS/);
+    assert.match(prompt, /"baselineValue": 45/);
+    assert.match(prompt, /"currentValue": 60/);
+    assert.match(prompt, /"documentedDefault": 45/);
+    assert.match(prompt, /Do not claim that you inspected repository files/);
+    assert.match(prompt, /Do not use Swagger, endpoint, annotation, or generated-spec terminology/);
+    assert.match(prompt, /operator-facing configuration documentation/);
+    assert.match(prompt, /proposed repair/);
+    assert.doesNotMatch(prompt, /annotationDefault/);
+    assert.doesNotMatch(prompt, /generatedSpecDefault/);
+    assert.doesNotMatch(prompt, /generated-spec defaults are stale/i);
+    assert.doesNotMatch(prompt, /operationId/i);
+    assert.doesNotMatch(prompt, /affectedOperations/i);
+  });
+
+  it("config synchronized prompt uses synchronization-specific instructions", () => {
+    const prompt = buildAnalysisPrompt(VALID_CONFIG_SYNCHRONIZED_EVIDENCE);
+    assert.match(prompt, /configuration synchronization closure/);
+    assert.match(prompt, /synchronized operational documentation/i);
+    assert.match(prompt, /deterministic closure evidence/i);
+    assert.match(prompt, /no further remediation is required/i);
+    assert.match(prompt, /"documentedDefault": 60/);
+    assert.doesNotMatch(prompt, /annotationDefault/);
+    assert.doesNotMatch(prompt, /generatedSpecDefault/);
+    assert.doesNotMatch(prompt, /affectedOperations/);
+  });
+
+  it("rejects contradictory config drift evidence before SDK invocation", () => {
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_DRIFT_EVIDENCE,
+          documentation: {
+            ...VALID_CONFIG_DRIFT_EVIDENCE.documentation,
+            documentedDefault: 60,
+          },
+        }),
+      /documentedDefault must differ from currentValue/,
+    );
+  });
+
+  it("rejects contradictory config synchronized evidence before SDK invocation", () => {
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_SYNCHRONIZED_EVIDENCE,
+          documentation: {
+            ...VALID_CONFIG_SYNCHRONIZED_EVIDENCE.documentation,
+            documentedDefault: 45,
+          },
+        }),
+      /documentedDefault must equal currentValue/,
+    );
+  });
+
+  it("rejects missing config documentation metadata before SDK invocation", () => {
+    assert.throws(
+      () =>
+        parseEvidenceJson(
+          JSON.stringify({
+            ...VALID_CONFIG_DRIFT_EVIDENCE,
+            documentation: {
+              envVariable: "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
+              documentedDefault: 45,
+            },
+          }),
+          "fixture",
+        ),
+      /missing or invalid string field "file"/,
+    );
+    assert.throws(
+      () =>
+        parseEvidenceJson(
+          JSON.stringify({
+            ...VALID_CONFIG_DRIFT_EVIDENCE,
+            documentation: {
+              file: "gotify-server.env.example",
+              documentedDefault: 45,
+            },
+          }),
+          "fixture",
+        ),
+      /missing or invalid string field "envVariable"/,
+    );
+  });
+
+  it("rejects missing config runtime values before SDK invocation", () => {
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_DRIFT_EVIDENCE,
+          runtimeChange: {
+            ...VALID_CONFIG_DRIFT_EVIDENCE.runtimeChange,
+            currentValue: null,
+          },
+        }),
+      /missing runtimeChange.currentValue/,
+    );
+    assert.throws(
+      () =>
+        parseEvidenceJson(
+          JSON.stringify({
+            ...VALID_CONFIG_DRIFT_EVIDENCE,
+            runtimeChange: {
+              ...VALID_CONFIG_DRIFT_EVIDENCE.runtimeChange,
+              source: {
+                file: "config/config.go",
+                symbol: "Get",
+                field: "",
+              },
+            },
+          }),
+          "fixture",
+        ),
+      /missing or invalid string field "field"/,
+    );
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_DRIFT_EVIDENCE,
+          documentation: {
+            ...VALID_CONFIG_DRIFT_EVIDENCE.documentation,
+            documentedDefault: null,
+          },
+        }),
+      /missing documentation.documentedDefault/,
+    );
+  });
+
+  it("rejects unsupported config statuses without SDK invocation", () => {
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_DRIFT_EVIDENCE,
+          status: "no_relevant_change",
+          runtimeChange: {
+            ...VALID_CONFIG_DRIFT_EVIDENCE.runtimeChange,
+            currentValue: 45,
+          },
+          documentation: {
+            ...VALID_CONFIG_DRIFT_EVIDENCE.documentation,
+            documentedDefault: 45,
+          },
+        }),
+      /unsupported evidence status "no_relevant_change"/,
+    );
+    assert.throws(
+      () =>
+        assertUsableAnalysisEvidence({
+          ...VALID_CONFIG_DRIFT_EVIDENCE,
+          status: "inconclusive",
+        }),
+      /unsupported evidence status "inconclusive"/,
+    );
+  });
+
+  it("does not infer config contract from missing Swagger fields alone", () => {
+    const orphanOpenApiEvidence = {
+      schemaVersion: 1 as const,
+      checkId: "orphan-check",
+      baseRef: "demo-00-baseline",
+      status: "drift_detected" as const,
+      runtimeChange: {
+        source: {
+          file: "config/config.go",
+          symbol: "Get",
+          field: "PingPeriodSeconds",
+        },
+        baselineValue: 45,
+        currentValue: 60,
+      },
+    };
+    assert.throws(
+      () => assertUsableAnalysisEvidence(orphanOpenApiEvidence),
+      /missing affectedOperations/,
     );
   });
 });
