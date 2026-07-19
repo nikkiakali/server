@@ -1,0 +1,40 @@
+name: syncguard
+
+on:
+  push:
+    paths:
+      - "api/**"
+      - "docs/spec.json"
+      - "syncguard/**"
+      - ".github/workflows/syncguard.yml"
+  pull_request:
+    paths:
+      - "api/**"
+      - "docs/spec.json"
+      - "syncguard/**"
+      - ".github/workflows/syncguard.yml"
+
+jobs:
+  syncguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: syncguard/package-lock.json
+      - name: Install SyncGuard dependencies
+        working-directory: syncguard
+        run: npm ci
+      - name: Typecheck
+        working-directory: syncguard
+        run: npm run typecheck
+      - name: Test
+        working-directory: syncguard
+        run: npm test
+      - name: Check documentation sync
+        working-directory: syncguard
+        run: npm run check-sync
