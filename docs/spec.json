@@ -477,7 +477,7 @@
             "maximum": 200,
             "minimum": 1,
             "type": "integer",
-            "default": 100,
+            "default": 50,
             "description": "the maximal amount of messages to return",
             "name": "limit",
             "in": "query"
@@ -1474,7 +1474,7 @@
             "maximum": 200,
             "minimum": 1,
             "type": "integer",
-            "default": 100,
+            "default": 50,
             "description": "the maximal amount of messages to return",
             "name": "limit",
             "in": "query"

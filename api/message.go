@@ -59,7 +59,7 @@ type pagingParams struct {
 //	  required: false
 //	  maximum: 200
 //	  minimum: 1
-//	  default: 100
+//	  default: 50
 //	  type: integer
 //	- name: since
 //	  in: query
@@ -146,7 +146,7 @@ func withPaging(ctx *gin.Context, f func(pagingParams *pagingParams)) {
 //	  required: false
 //	  maximum: 200
 //	  minimum: 1
-//	  default: 100
+//	  default: 50
 //	  type: integer
 //	- name: since
 //	  in: query
