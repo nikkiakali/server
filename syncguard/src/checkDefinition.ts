@@ -59,3 +59,37 @@ export const PAGINATION_DEFAULT_CHECK: PaginationDefaultCheck = {
   ],
   defaultOutputRelPath: "syncguard/artifacts/deterministic-evidence.json",
 };
+
+/** Operator-facing env-example documentation target for a configuration check. */
+export interface EnvExampleDocumentationTarget {
+  /** Repository-relative path to the env-example file. */
+  file: string;
+  /** Environment variable name documented in the example file. */
+  envVariable: string;
+}
+
+/** Declared definition for a Go config default vs env-example documentation check. */
+export interface ConfigEnvDefaultCheck {
+  checkId: "gotify-stream-ping-default";
+  contractKind: "config-env-example";
+  /** Default git baseline ref for runtime comparison. */
+  baseRef: string;
+  runtime: RuntimeSourceLocation;
+  documentation: EnvExampleDocumentationTarget;
+}
+
+export const STREAM_PING_DEFAULT_CHECK: ConfigEnvDefaultCheck = {
+  checkId: "gotify-stream-ping-default",
+  contractKind: "config-env-example",
+  baseRef: "demo-00-baseline",
+  runtime: {
+    file: "config/config.go",
+    symbol: "Get",
+    field: "PingPeriodSeconds",
+    compositeLiteralType: "Stream",
+  },
+  documentation: {
+    file: "gotify-server.env.example",
+    envVariable: "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
+  },
+};
