@@ -75,7 +75,7 @@ func (s *MessageSuite) Test_GetMessages() {
 	s.a.GetMessages(s.ctx)
 
 	expected := &model.PagedMessages{
-		Paging:   model.Paging{Limit: 100, Size: 2, Next: ""},
+		Paging:   model.Paging{Limit: 50, Size: 2, Next: ""},
 		Messages: []*model.MessageExternal{secondExternal, firstExternal},
 	}
 
@@ -166,7 +166,7 @@ func (s *MessageSuite) Test_GetMessagesWithToken() {
 	s.a.GetMessagesWithApplication(s.ctx)
 
 	expected := &model.PagedMessages{
-		Paging:   model.Paging{Limit: 100, Size: 1, Next: ""},
+		Paging:   model.Paging{Limit: 50, Size: 1, Next: ""},
 		Messages: toExternalMessages([]*model.Message{&msg}),
 	}
 
