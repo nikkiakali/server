@@ -1,9 +1,9 @@
 /**
  * Gotify-specific Swagger annotation parser.
  *
- * Reads go-swagger `swagger:operation` godoc comment blocks in api/message.go
- * and extracts the `default:` of the `limit` query parameter for a specific
- * operation. Not a general YAML or OpenAPI parser.
+ * Reads go-swagger `swagger:operation` godoc comment blocks and extracts the
+ * numeric `default:` of a named query parameter for a specific operation.
+ * Not a general YAML or OpenAPI parser.
  */
 import type { OperationDescriptor, ParseResult } from "./types.js";
 
@@ -13,9 +13,10 @@ function escapeRegExp(text: string): string {
 
 const COMMENT_PREFIX = /^\s*\/\/ ?/;
 
-export function parseAnnotationLimitDefault(
+export function parseAnnotationParameterDefault(
   goSource: string,
   operation: OperationDescriptor,
+  parameterName: string,
 ): ParseResult<number> {
   const lines = goSource.split("\n");
   const headerPattern = new RegExp(
@@ -39,8 +40,9 @@ export function parseAnnotationLimitDefault(
     };
   }
 
+  const namePattern = new RegExp(`^-\\s*name:\\s*${escapeRegExp(parameterName)}\\s*$`);
   const defaults: number[] = [];
-  let inLimitParameter = false;
+  let inTargetParameter = false;
 
   for (let i = headerIndexes[0]! + 1; i < lines.length; i++) {
     const raw = lines[i]!;
@@ -50,10 +52,10 @@ export function parseAnnotationLimitDefault(
     if (content === "responses:") break;
 
     if (content.startsWith("- name:")) {
-      inLimitParameter = /^-\s*name:\s*limit\s*$/.test(content);
+      inTargetParameter = namePattern.test(content);
       continue;
     }
-    if (inLimitParameter) {
+    if (inTargetParameter) {
       const m = /^default:\s*(\d+)\s*$/.exec(content);
       if (m) defaults.push(Number.parseInt(m[1]!, 10));
     }
@@ -62,13 +64,13 @@ export function parseAnnotationLimitDefault(
   if (defaults.length === 0) {
     return {
       ok: false,
-      reason: `no integer default for the limit parameter in the ${operation.operationId} annotation`,
+      reason: `no integer default for the ${parameterName} parameter in the ${operation.operationId} annotation`,
     };
   }
   if (defaults.length > 1) {
     return {
       ok: false,
-      reason: `ambiguous limit default in the ${operation.operationId} annotation (${defaults.length} values)`,
+      reason: `ambiguous ${parameterName} default in the ${operation.operationId} annotation (${defaults.length} values)`,
     };
   }
 

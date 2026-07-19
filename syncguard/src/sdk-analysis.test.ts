@@ -124,14 +124,22 @@ describe("sdk-analysis evidence loading", () => {
     );
   });
 
+  it("accepts valid evidence with a different non-empty checkId", () => {
+    const evidence = parseEvidenceJson(
+      JSON.stringify({ ...VALID_EVIDENCE, checkId: "other-check-id" }),
+    );
+    assert.equal(evidence.checkId, "other-check-id");
+    assertUsableDriftEvidence(evidence);
+  });
+
   it("3: rejects structurally invalid evidence", () => {
     assert.throws(
       () =>
         parseEvidenceJson(
-          JSON.stringify({ schemaVersion: 1, checkId: "wrong", baseRef: "x", status: "drift_detected" }),
+          JSON.stringify({ schemaVersion: 1, checkId: "", baseRef: "x", status: "drift_detected" }),
           "fixture",
         ),
-      /unexpected checkId/,
+      /missing or invalid string field "checkId"/,
     );
     assert.throws(
       () =>

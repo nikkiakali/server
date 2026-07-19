@@ -60,8 +60,9 @@ export function formatSummary(evidence: Evidence): string {
   lines.push(`base-ref: ${evidence.baseRef}`);
 
   if (evidence.runtimeChange) {
+    const field = evidence.runtimeChange.source.field;
     lines.push(
-      `runtime Limit: baseline=${evidence.runtimeChange.baselineValue} current=${evidence.runtimeChange.currentValue}`,
+      `runtime ${field}: baseline=${evidence.runtimeChange.baselineValue} current=${evidence.runtimeChange.currentValue}`,
     );
   }
 

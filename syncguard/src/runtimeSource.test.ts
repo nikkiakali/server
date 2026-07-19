@@ -4,17 +4,19 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { parseWithPagingLimit } from "./runtimeSource.js";
+import { PAGINATION_DEFAULT_CHECK } from "./checkDefinition.js";
+import { parseRuntimeFieldDefault } from "./runtimeSource.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+const TARGET = PAGINATION_DEFAULT_CHECK.runtimeSource;
 
 function load(name: string): string {
   return readFileSync(join(FIXTURES, name), "utf8");
 }
 
-describe("parseWithPagingLimit", () => {
+describe("parseRuntimeFieldDefault", () => {
   it("extracts Limit: 50 from a single-line composite literal", () => {
-    const result = parseWithPagingLimit(load("runtime-limit-50.go.txt"));
+    const result = parseRuntimeFieldDefault(load("runtime-limit-50.go.txt"), TARGET);
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.value.value, 50);
@@ -23,24 +25,43 @@ describe("parseWithPagingLimit", () => {
   });
 
   it("extracts Limit: 100 from a single-line composite literal", () => {
-    const result = parseWithPagingLimit(load("runtime-limit-100.go.txt"));
+    const result = parseRuntimeFieldDefault(load("runtime-limit-100.go.txt"), TARGET);
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.value.value, 100);
   });
 
   it("tolerates a multiline pagingParams composite literal", () => {
-    const result = parseWithPagingLimit(load("runtime-multiline.go.txt"));
+    const result = parseRuntimeFieldDefault(load("runtime-multiline.go.txt"), TARGET);
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.value.value, 50);
   });
 
   it("returns inconclusive when Limit is missing", () => {
-    const result = parseWithPagingLimit(load("runtime-missing-limit.go.txt"));
+    const result = parseRuntimeFieldDefault(load("runtime-missing-limit.go.txt"), TARGET);
     assert.equal(result.ok, false);
   });
 
   it("returns inconclusive when withPaging is absent", () => {
-    const result = parseWithPagingLimit(load("runtime-no-withpaging.go.txt"));
+    const result = parseRuntimeFieldDefault(load("runtime-no-withpaging.go.txt"), TARGET);
     assert.equal(result.ok, false);
+  });
+
+  it("uses check-declared symbol and field without hardcoded names in parser", () => {
+    const goSource = `package api
+
+func otherHelper() {}
+
+func customFn(ctx *gin.Context) {
+  params := &widgetType{PageSize: 41}
+}
+`;
+    const result = parseRuntimeFieldDefault(goSource, {
+      file: "ignored.go",
+      symbol: "customFn",
+      field: "PageSize",
+      compositeLiteralType: "widgetType",
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.value.value, 41);
   });
 });

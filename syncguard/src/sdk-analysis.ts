@@ -125,15 +125,9 @@ export function parseEvidenceJson(text: string, sourceLabel = "evidence"): Evide
       `${sourceLabel}: unsupported schemaVersion ${String(parsed.schemaVersion)} (expected 1)`,
     );
   }
-  if (parsed.checkId !== "gotify-pagination-default") {
-    throw new SdkAnalysisError(
-      `${sourceLabel}: unexpected checkId "${String(parsed.checkId)}" (expected gotify-pagination-default)`,
-    );
-  }
-
   const evidence: Evidence = {
     schemaVersion: 1,
-    checkId: "gotify-pagination-default",
+    checkId: expectString(parsed, "checkId", sourceLabel),
     baseRef: expectString(parsed, "baseRef", sourceLabel),
     status: expectStatus(parsed.status, sourceLabel),
   };

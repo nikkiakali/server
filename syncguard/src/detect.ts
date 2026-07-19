@@ -2,33 +2,39 @@
  * Phase 1 CLI: baseline-aware deterministic pagination drift detector.
  *
  * Discovers the Gotify repository root via git (from this module's directory),
- * reads baseline/current runtime sources, annotations, and docs/spec.json,
- * and writes syncguard/artifacts/deterministic-evidence.json.
+ * reads baseline/current runtime sources, annotations, and the generated spec,
+ * and writes SyncGuard evidence JSON.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseAnnotationLimitDefault } from "./annotationSource.js";
+import { parseAnnotationParameterDefault } from "./annotationSource.js";
+import { PAGINATION_DEFAULT_CHECK } from "./checkDefinition.js";
 import { compare, failOnDriftExitCode } from "./compare.js";
-import { findRepoRoot, gitShowFile } from "./git.js";
+import { findRepoRoot, gitShowFile, type GitRunner } from "./git.js";
 import { formatSummary, serializeEvidence } from "./serialize.js";
-import { parseSwaggerSpec, specLimitDefault } from "./spec.js";
-import { parseWithPagingLimit } from "./runtimeSource.js";
-import { AFFECTED_OPERATIONS, type Evidence } from "./types.js";
+import { parseSwaggerSpec, specParameterDefault } from "./spec.js";
+import { parseRuntimeFieldDefault } from "./runtimeSource.js";
+import type { Evidence } from "./types.js";
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const SYNCGUARD_DIR = dirname(MODULE_DIR);
 
-const MESSAGE_GO = "api/message.go";
-const SPEC_JSON = "docs/spec.json";
-const ARTIFACT_REL = join("syncguard", "artifacts", "deterministic-evidence.json");
+const CHECK = PAGINATION_DEFAULT_CHECK;
 
 export interface DetectOptions {
   baseRef: string;
   failOnDrift: boolean;
+  /**
+   * Evidence output path. Absolute paths are used as-is; relative paths are
+   * resolved from the repository root (not process.cwd()).
+   */
+  outputPath?: string;
   /** Override repository root (tests only). */
   repoRoot?: string;
+  /** Override git runner (tests only). */
+  gitRunner?: GitRunner;
 }
 
 export interface DetectResult {
@@ -39,9 +45,15 @@ export interface DetectResult {
   exitCode: number;
 }
 
+export function resolveOutputPath(repoRoot: string, outputPath: string | undefined): string {
+  const relOrAbs = outputPath ?? CHECK.defaultOutputRelPath;
+  return isAbsolute(relOrAbs) ? relOrAbs : resolve(repoRoot, relOrAbs);
+}
+
 export function parseArgs(argv: string[]): DetectOptions {
   let baseRef: string | undefined;
   let failOnDrift = false;
+  let outputPath: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -53,9 +65,15 @@ export function parseArgs(argv: string[]): DetectOptions {
       baseRef = value;
     } else if (arg === "--fail-on-drift") {
       failOnDrift = true;
+    } else if (arg === "--output") {
+      const value = argv[++i];
+      if (!value || value.startsWith("-")) {
+        throw new Error("--output requires a path");
+      }
+      outputPath = value;
     } else if (arg === "--help" || arg === "-h") {
       throw new Error(
-        "usage: npm run detect-drift -- --base-ref <git-ref> [--fail-on-drift]",
+        "usage: npm run detect-drift -- --base-ref <git-ref> [--output <path>] [--fail-on-drift]",
       );
     } else {
       throw new Error(`unknown argument: ${arg}`);
@@ -69,36 +87,43 @@ export function parseArgs(argv: string[]): DetectOptions {
     );
   }
 
-  return { baseRef, failOnDrift };
+  return { baseRef, failOnDrift, outputPath };
 }
 
 export function runDetect(options: DetectOptions): DetectResult {
   const repoRoot = options.repoRoot ?? findRepoRoot(SYNCGUARD_DIR);
-  const messageGoPath = join(repoRoot, MESSAGE_GO);
-  const specPath = join(repoRoot, SPEC_JSON);
-  const artifactPath = join(repoRoot, ARTIFACT_REL);
+  const runtimeFile = CHECK.runtimeSource.file;
+  const messageGoPath = join(repoRoot, runtimeFile);
+  const specPath = join(repoRoot, CHECK.generatedSpecFile);
+  const artifactPath = resolveOutputPath(repoRoot, options.outputPath);
 
-  const baselineGo = gitShowFile(repoRoot, options.baseRef, MESSAGE_GO);
+  const gitRun = options.gitRunner;
+  const baselineGo = gitShowFile(repoRoot, options.baseRef, runtimeFile, gitRun);
   const currentGo = readFileSync(messageGoPath, "utf8");
   const specText = readFileSync(specPath, "utf8");
 
-  const baselineRuntime = parseWithPagingLimit(baselineGo);
-  const currentRuntime = parseWithPagingLimit(currentGo);
-
+  const baselineParsed = parseRuntimeFieldDefault(baselineGo, CHECK.runtimeSource);
+  const currentParsed = parseRuntimeFieldDefault(currentGo, CHECK.runtimeSource);
   const specParsed = parseSwaggerSpec(specText);
 
-  const operations = AFFECTED_OPERATIONS.map((op) => ({
+  const operations = CHECK.operations.map((op) => ({
     ...op,
-    annotationDefault: parseAnnotationLimitDefault(currentGo, op),
+    annotationDefault: parseAnnotationParameterDefault(
+      currentGo,
+      op,
+      CHECK.parameterName,
+    ),
     generatedSpecDefault: specParsed.ok
-      ? specLimitDefault(specParsed.value, op)
+      ? specParameterDefault(specParsed.value, op, CHECK.parameterName)
       : ({ ok: false as const, reason: specParsed.reason }),
   }));
 
   const evidence = compare({
+    checkId: CHECK.checkId,
     baseRef: options.baseRef,
-    baselineRuntime,
-    currentRuntime,
+    runtimeSource: CHECK.runtimeSource,
+    baselineRuntime: baselineParsed,
+    currentRuntime: currentParsed,
     operations,
   });
 

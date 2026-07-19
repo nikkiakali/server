@@ -12,7 +12,7 @@ export type ParseResult<T> =
 
 export interface RuntimeValue {
   value: number;
-  /** 1-based source line of the Limit value, when determinable. */
+  /** 1-based source line of the runtime field value, when determinable. */
   line?: number;
 }
 
@@ -27,19 +27,23 @@ export interface OperationEvidenceInput extends OperationDescriptor {
   generatedSpecDefault: ParseResult<number>;
 }
 
+export interface RuntimeSourceRef {
+  file: string;
+  symbol: string;
+  field: string;
+}
+
 export interface CompareInput {
+  checkId: string;
   baseRef: string;
+  runtimeSource: RuntimeSourceRef;
   baselineRuntime: ParseResult<RuntimeValue>;
   currentRuntime: ParseResult<RuntimeValue>;
   operations: OperationEvidenceInput[];
 }
 
 export interface RuntimeChange {
-  source: {
-    file: string;
-    symbol: string;
-    field: string;
-  };
+  source: RuntimeSourceRef;
   baselineValue: number;
   currentValue: number;
   baselineLine?: number;
@@ -58,7 +62,7 @@ export interface OperationResult {
 
 export interface Evidence {
   schemaVersion: 1;
-  checkId: "gotify-pagination-default";
+  checkId: string;
   baseRef: string;
   status: AnalysisStatus;
   /** Present only when status is "inconclusive"; deterministic order. */
@@ -68,17 +72,3 @@ export interface Evidence {
   /** Present only when both runtime values were extracted; path-sorted. */
   affectedOperations?: OperationResult[];
 }
-
-/** Fixed affected operations, path-sorted: application path before /message. */
-export const AFFECTED_OPERATIONS: readonly OperationDescriptor[] = [
-  {
-    operationId: "getAppMessages",
-    method: "GET",
-    path: "/application/{id}/message",
-  },
-  {
-    operationId: "getMessages",
-    method: "GET",
-    path: "/message",
-  },
-];

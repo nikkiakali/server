@@ -1,5 +1,8 @@
 /**
- * Pure status derivation for the pagination-default check.
+ * Pure status derivation for SyncGuard checks.
+ *
+ * Numeric thresholds and check-specific paths are supplied by the caller (check
+ * definition + parsers). This module only compares provided values.
  *
  * Top-level precedence:
  * 1. Runtime evidence missing/ambiguous/unparsable → inconclusive
@@ -15,6 +18,7 @@ import type {
   OperationEvidenceInput,
   OperationResult,
   RuntimeChange,
+  RuntimeSourceRef,
   RuntimeValue,
 } from "./types.js";
 
@@ -27,14 +31,15 @@ function sortOperations(ops: OperationEvidenceInput[]): OperationEvidenceInput[]
 }
 
 function buildRuntimeChange(
+  source: RuntimeSourceRef,
   baseline: RuntimeValue,
   current: RuntimeValue,
 ): RuntimeChange {
   const change: RuntimeChange = {
     source: {
-      file: "api/message.go",
-      symbol: "withPaging",
-      field: "Limit",
+      file: source.file,
+      symbol: source.symbol,
+      field: source.field,
     },
     baselineValue: baseline.value,
     currentValue: current.value,
@@ -71,7 +76,7 @@ function endpointStatus(
 export function compare(input: CompareInput): Evidence {
   const base: Evidence = {
     schemaVersion: 1,
-    checkId: "gotify-pagination-default",
+    checkId: input.checkId,
     baseRef: input.baseRef,
     status: "inconclusive",
   };
@@ -89,7 +94,7 @@ export function compare(input: CompareInput): Evidence {
 
   const baseline = input.baselineRuntime.value;
   const current = input.currentRuntime.value;
-  const runtimeChange = buildRuntimeChange(baseline, current);
+  const runtimeChange = buildRuntimeChange(input.runtimeSource, baseline, current);
   const operations = sortOperations(input.operations);
   const topLevelNoChange = baseline.value === current.value;
 
