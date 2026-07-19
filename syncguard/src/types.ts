@@ -72,3 +72,43 @@ export interface Evidence {
   /** Present only when both runtime values were extracted; path-sorted. */
   affectedOperations?: OperationResult[];
 }
+
+/** Runtime change record for configuration-to-env-example evidence. */
+export interface ConfigRuntimeChange {
+  source: RuntimeSourceRef;
+  baselineValue: number | null;
+  currentValue: number | null;
+}
+
+/** Operator-facing documentation target for a configuration default. */
+export interface ConfigDocumentation {
+  file: string;
+  envVariable: string;
+  documentedDefault: number | null;
+}
+
+/** Deterministic evidence for a Go config default vs env-example documentation. */
+export interface ConfigEnvEvidence {
+  schemaVersion: 1;
+  checkId: string;
+  contractKind: "config-env-example";
+  baseRef: string;
+  status: AnalysisStatus;
+  runtimeChange: ConfigRuntimeChange;
+  documentation: ConfigDocumentation;
+  /** Present only when status is "inconclusive" or when drift/sync facts are reported. */
+  reasons?: string[];
+}
+
+export type DeterministicEvidence = Evidence | ConfigEnvEvidence;
+
+export interface ConfigDocCompareInput {
+  checkId: string;
+  baseRef: string;
+  runtimeSource: RuntimeSourceRef;
+  documentationFile: string;
+  envVariable: string;
+  baselineRuntime: ParseResult<number>;
+  currentRuntime: ParseResult<number>;
+  documentedDefault: ParseResult<number>;
+}
