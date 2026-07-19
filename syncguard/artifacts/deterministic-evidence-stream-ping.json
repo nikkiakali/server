@@ -3,10 +3,10 @@
   "checkId": "gotify-stream-ping-default",
   "contractKind": "config-env-example",
   "baseRef": "demo-00-baseline",
-  "status": "drift_detected",
+  "status": "synchronized",
   "reasons": [
     "Runtime default changed from 45 to 60.",
-    "Documented default 45 does not match current runtime default 60."
+    "Documented default 60 matches current runtime default 60."
   ],
   "runtimeChange": {
     "source": {
@@ -20,6 +20,6 @@
   "documentation": {
     "file": "gotify-server.env.example",
     "envVariable": "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
-    "documentedDefault": 45
+    "documentedDefault": 60
   }
 }
