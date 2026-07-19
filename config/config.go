@@ -97,7 +97,7 @@ func Get() (*Configuration, []FutureLog) {
 				},
 			},
 			Stream: Stream{
-				PingPeriodSeconds: 45,
+				PingPeriodSeconds: 60,
 			},
 		},
 		Database: Database{

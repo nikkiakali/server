@@ -3,7 +3,11 @@
   "checkId": "gotify-stream-ping-default",
   "contractKind": "config-env-example",
   "baseRef": "demo-00-baseline",
-  "status": "no_relevant_change",
+  "status": "drift_detected",
+  "reasons": [
+    "Runtime default changed from 45 to 60.",
+    "Documented default 45 does not match current runtime default 60."
+  ],
   "runtimeChange": {
     "source": {
       "file": "config/config.go",
@@ -11,7 +15,7 @@
       "field": "PingPeriodSeconds"
     },
     "baselineValue": 45,
-    "currentValue": 45
+    "currentValue": 60
   },
   "documentation": {
     "file": "gotify-server.env.example",

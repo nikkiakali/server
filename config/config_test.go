@@ -9,6 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStreamPingPeriodSecondsDefault(t *testing.T) {
+	mode.Set(mode.TestDev)
+	os.Unsetenv(EnvServerStreamPingPeriodSeconds)
+	os.Unsetenv(EnvServerStreamPingPeriodSeconds + "_FILE")
+
+	conf, _ := Get()
+	assert.Equal(t, 60, conf.Server.Stream.PingPeriodSeconds)
+}
+
 func TestConfigEnv(t *testing.T) {
 	mode.Set(mode.TestDev)
 	os.Setenv("GOTIFY_DEFAULTUSER_NAME", "jmattheis")
