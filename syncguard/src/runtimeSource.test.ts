@@ -64,4 +64,59 @@ func customFn(ctx *gin.Context) {
     assert.equal(result.ok, true);
     if (result.ok) assert.equal(result.value.value, 41);
   });
+
+  it("extracts PingPeriodSeconds: 45 from Get with nested Stream literal", () => {
+    const goSource = `package config
+
+func Get() (*Configuration, []FutureLog) {
+	c := &Configuration{
+		Server: Server{
+			Stream: Stream{
+				PingPeriodSeconds: 45,
+			},
+		},
+	}
+	return c, nil
+}
+`;
+    const result = parseRuntimeFieldDefault(goSource, {
+      file: "config/config.go",
+      symbol: "Get",
+      compositeLiteralType: "Stream",
+      field: "PingPeriodSeconds",
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.value.value, 45);
+      assert.equal(typeof result.value.line, "number");
+    }
+  });
+
+  it("returns inconclusive when multiple Stream literals contain PingPeriodSeconds", () => {
+    const goSource = `package config
+
+func Get() (*Configuration, []FutureLog) {
+	c := &Configuration{
+		Server: Server{
+			Stream: Stream{
+				PingPeriodSeconds: 45,
+			},
+		},
+	}
+	other := Stream{
+		PingPeriodSeconds: 30,
+	}
+	_ = other
+	return c, nil
+}
+`;
+    const result = parseRuntimeFieldDefault(goSource, {
+      file: "config/config.go",
+      symbol: "Get",
+      compositeLiteralType: "Stream",
+      field: "PingPeriodSeconds",
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.match(result.reason, /ambiguous PingPeriodSeconds/);
+  });
 });
