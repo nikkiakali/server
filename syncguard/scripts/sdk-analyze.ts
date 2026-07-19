@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import {
   SdkAnalysisError,
   buildAnalysisPrompt,
-  loadDriftEvidence,
+  loadAnalysisEvidence,
   validateDriftReport,
 } from "../src/sdk-analysis.js";
 
@@ -215,7 +215,7 @@ async function main(): Promise<void> {
 
   let evidence;
   try {
-    evidence = loadDriftEvidence(options.inputPath);
+    evidence = loadAnalysisEvidence(options.inputPath);
   } catch (err) {
     if (err instanceof SdkAnalysisError) {
       fail(err.message);
