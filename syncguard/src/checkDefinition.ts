@@ -76,6 +76,8 @@ export interface ConfigEnvDefaultCheck {
   baseRef: string;
   runtime: RuntimeSourceLocation;
   documentation: EnvExampleDocumentationTarget;
+  /** Default artifact path relative to the repository root. */
+  defaultOutputRelPath: string;
 }
 
 export const STREAM_PING_DEFAULT_CHECK: ConfigEnvDefaultCheck = {
@@ -92,4 +94,5 @@ export const STREAM_PING_DEFAULT_CHECK: ConfigEnvDefaultCheck = {
     file: "gotify-server.env.example",
     envVariable: "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
   },
+  defaultOutputRelPath: "syncguard/artifacts/deterministic-evidence-stream-ping.json",
 };

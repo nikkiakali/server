@@ -1,5 +1,11 @@
 /** Stable JSON serialization — fixed key order, trailing newline, no volatile fields. */
-import type { Evidence, OperationResult, RuntimeChange } from "./types.js";
+import type {
+  ConfigEnvEvidence,
+  ConfigRuntimeChange,
+  Evidence,
+  OperationResult,
+  RuntimeChange,
+} from "./types.js";
 
 function serializeRuntimeChange(change: RuntimeChange): Record<string, unknown> {
   const source: Record<string, string> = {
@@ -79,6 +85,60 @@ export function formatSummary(evidence: Evidence): string {
       );
     }
   }
+
+  if (evidence.reasons?.length) {
+    lines.push("reasons:");
+    for (const r of evidence.reasons) {
+      lines.push(`  - ${r}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function serializeConfigRuntimeChange(change: ConfigRuntimeChange): Record<string, unknown> {
+  return {
+    source: {
+      file: change.source.file,
+      symbol: change.source.symbol,
+      field: change.source.field,
+    },
+    baselineValue: change.baselineValue,
+    currentValue: change.currentValue,
+  };
+}
+
+/** Build deterministic JSON for configuration-env-example evidence. */
+export function serializeConfigEnvEvidence(evidence: ConfigEnvEvidence): string {
+  const out: Record<string, unknown> = {
+    schemaVersion: evidence.schemaVersion,
+    checkId: evidence.checkId,
+    contractKind: evidence.contractKind,
+    baseRef: evidence.baseRef,
+    status: evidence.status,
+  };
+  if (evidence.reasons !== undefined) {
+    out.reasons = evidence.reasons;
+  }
+  out.runtimeChange = serializeConfigRuntimeChange(evidence.runtimeChange);
+  out.documentation = {
+    file: evidence.documentation.file,
+    envVariable: evidence.documentation.envVariable,
+    documentedDefault: evidence.documentation.documentedDefault,
+  };
+  return `${JSON.stringify(out, null, 2)}\n`;
+}
+
+export function formatConfigEnvSummary(evidence: ConfigEnvEvidence): string {
+  const lines: string[] = [];
+
+  const field = evidence.runtimeChange.source.field;
+  lines.push(
+    `runtime ${field}: baseline=${evidence.runtimeChange.baselineValue} current=${evidence.runtimeChange.currentValue}`,
+  );
+  lines.push(
+    `${evidence.documentation.envVariable}: documented=${evidence.documentation.documentedDefault}`,
+  );
 
   if (evidence.reasons?.length) {
     lines.push("reasons:");

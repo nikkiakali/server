@@ -5,12 +5,16 @@ on:
     paths:
       - "api/**"
       - "docs/spec.json"
+      - "config/**"
+      - "gotify-server.env.example"
       - "syncguard/**"
       - ".github/workflows/syncguard.yml"
   pull_request:
     paths:
       - "api/**"
       - "docs/spec.json"
+      - "config/**"
+      - "gotify-server.env.example"
       - "syncguard/**"
       - ".github/workflows/syncguard.yml"
 

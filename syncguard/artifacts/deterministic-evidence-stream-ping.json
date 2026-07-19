@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "checkId": "gotify-stream-ping-default",
+  "contractKind": "config-env-example",
+  "baseRef": "demo-00-baseline",
+  "status": "no_relevant_change",
+  "runtimeChange": {
+    "source": {
+      "file": "config/config.go",
+      "symbol": "Get",
+      "field": "PingPeriodSeconds"
+    },
+    "baselineValue": 45,
+    "currentValue": 45
+  },
+  "documentation": {
+    "file": "gotify-server.env.example",
+    "envVariable": "GOTIFY_SERVER_STREAM_PINGPERIODSECONDS",
+    "documentedDefault": 45
+  }
+}
