@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "checkId": "gotify-pagination-default",
   "baseRef": "demo-00-baseline",
-  "status": "drift_detected",
+  "status": "synchronized",
   "runtimeChange": {
     "source": {
       "file": "api/message.go",
@@ -20,18 +20,18 @@
       "method": "GET",
       "path": "/application/{id}/message",
       "runtimeDefault": 50,
-      "annotationDefault": 100,
-      "generatedSpecDefault": 100,
-      "status": "drift_detected"
+      "annotationDefault": 50,
+      "generatedSpecDefault": 50,
+      "status": "synchronized"
     },
     {
       "operationId": "getMessages",
       "method": "GET",
       "path": "/message",
       "runtimeDefault": 50,
-      "annotationDefault": 100,
-      "generatedSpecDefault": 100,
-      "status": "drift_detected"
+      "annotationDefault": 50,
+      "generatedSpecDefault": 50,
+      "status": "synchronized"
     }
   ]
 }

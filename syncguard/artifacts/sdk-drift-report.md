@@ -2,76 +2,65 @@
 
 ## Executive Summary
 
-Documentation drift was detected by checkId `gotify-pagination-default` against baseRef `demo-00-baseline`. The runtime default page limit for message listing changed from 100 to 50, while swagger annotations and the generated spec still document 100 for the affected operations.
+The targeted documentation drift for checkId `gotify-pagination-default` against baseRef `demo-00-baseline` is resolved: overall status is `synchronized`. Affected operations `getAppMessages` (`GET /application/{id}/message`) and `getMessages` (`GET /message`) are synchronized; no unresolved drift remains for those operations in the supplied evidence.
 
 ## Proven Drift
 
-**Runtime change (authoritative):**
+**Historical runtime change** (from `runtimeChange`):
 
 | Field | Value |
 | --- | --- |
-| Source | `api/message.go` → symbol `withPaging` → field `Limit` |
-| Baseline value | 100 |
-| Current value | 50 |
-| Baseline line | 122 |
-| Current line | 122 |
-| Overall status | `drift_detected` |
+| Source | `api/message.go`, symbol `withPaging`, field `Limit` |
+| Baseline value | `100` (line 122) |
+| Current value | `50` (line 122) |
 
-**Affected operations:**
+**Per-operation alignment** (all status `synchronized`):
 
-1. **`getAppMessages`** — `GET /application/{id}/message`
-   - `runtimeDefault`: 50
-   - `annotationDefault`: 100
-   - `generatedSpecDefault`: 100
-   - `status`: `drift_detected`
+- **`getAppMessages`** — `GET /application/{id}/message`: `runtimeDefault` = `50`, `annotationDefault` = `50`, `generatedSpecDefault` = `50` (match).
+- **`getMessages`** — `GET /message`: `runtimeDefault` = `50`, `annotationDefault` = `50`, `generatedSpecDefault` = `50` (match).
 
-2. **`getMessages`** — `GET /message`
-   - `runtimeDefault`: 50
-   - `annotationDefault`: 100
-   - `generatedSpecDefault`: 100
-   - `status`: `drift_detected`
+Scope is limited to these two operations. Annotation and generated-spec defaults are not stale relative to runtime for the listed operations.
 
 ## Impact
 
-API consumers and docs that rely on the annotation or generated OpenAPI defaults will expect a default `Limit` of 100 for `GET /message` and `GET /application/{id}/message`, but the server currently defaults to 50. Clients that omit an explicit limit may receive fewer messages per page than documented, which can break pagination assumptions, incomplete-fetch logic, and any code generated or validated against the stale spec defaults.
+For API consumers of `GET /application/{id}/message` and `GET /message`, pagination behavior is defined by the runtime default for `Limit`. Keeping `runtimeDefault`, `annotationDefault`, and `generatedSpecDefault` aligned at `50` means clients and tools that rely on swagger annotations or the generated OpenAPI spec see the same default page size the server applies. Misalignment would cause incorrect client assumptions about how many messages are returned when `limit` is omitted. Impact outside these two operations is unknown from supplied evidence.
 
 ## Remediation Recommendation
 
-**Recommendation (not a proven fact):** Align documentation with the current runtime default of 50, unless product intent is known to reverse the runtime change.
+No further remediation is required for this synchronized check. Do not update swagger annotations, regenerate the spec, or change runtime for `getAppMessages` or `getMessages` based on this evidence.
 
-Evidence shows runtime `Limit` is 50 while annotations and generated-spec defaults remain 100. Whether the runtime change was intentional is **unknown from supplied evidence**. The safer remediation when intent is unclear is:
-
-1. Update swagger/OpenAPI annotations for `getMessages` and `getAppMessages` so the documented default `Limit` is 50 (matching `withPaging` in `api/message.go`).
-2. Regenerate the OpenAPI/spec artifact so `generatedSpecDefault` becomes 50 for those operations.
-3. Do **not** change runtime back to 100 solely to match docs without confirming product intent — that intent is **unknown from supplied evidence**.
+**Maintenance (recommendation only):** After any future change to the runtime `Limit` default in `withPaging`, re-verify that annotations and the generated spec still match before treating the check as closed.
 
 ## Verification Steps
 
-**Recommendation:** after remediating, a human should:
-
-1. Confirm runtime default for `withPaging` / `Limit` in `api/message.go` is still the intended value (currently 50 per evidence).
-2. Confirm annotation defaults for `getMessages` and `getAppMessages` match that runtime value.
-3. Regenerate the API spec (exact command **unknown from supplied evidence**) and confirm `generatedSpecDefault` is 50 for both operations.
-4. Re-run SyncGuard detect-drift for checkId `gotify-pagination-default` against the appropriate base ref and confirm status is no longer `drift_detected`.
+1. Re-run SyncGuard `detect-drift` (or the equivalent check for `gotify-pagination-default`) against the same baseRef (or the current baseline used by the pipeline).
+2. Confirm the check reports status `synchronized` and that both `getAppMessages` and `getMessages` still show matching `runtimeDefault`, `annotationDefault`, and `generatedSpecDefault` of `50`.
+3. Do not run remediation steps for this check while evidence shows synchronized status.
 
 ## Runbook Update
 
-Add guidance for this drift class:
+Ops should record for this drift class (`gotify-pagination-default`):
 
-- **Runtime default vs swagger annotations vs generated spec** must stay in sync for pagination `Limit` (and similar query defaults).
-- When SyncGuard reports `drift_detected` on pagination defaults, treat the runtime source (`api/message.go` / `withPaging` / `Limit`) as the behavior clients actually get; treat stale `annotationDefault` / `generatedSpecDefault` as a documentation bug until intentionally reconciled.
-- Ops should require: (1) decide whether runtime or docs is canonical for the change, (2) update annotations, (3) regenerate the spec, (4) re-run SyncGuard detect-drift for `gotify-pagination-default` before merging.
+- **Verified synchronization:** runtime default for `withPaging`/`Limit` is `50`; swagger annotation defaults and generated-spec defaults for `getAppMessages` and `getMessages` also `50`; check status `synchronized` vs baseRef `demo-00-baseline`.
+- **Triplet to track:** runtime default ↔ swagger annotations ↔ generated OpenAPI spec.
+- **Forward rule:** any future runtime change to the pagination `Limit` default requires re-checking that annotations and generated spec remain aligned before closing the drift class again.
 
 ## Assumptions and Confidence
 
 **Deterministic facts from the evidence:**
 
-- `checkId` is `gotify-pagination-default`; `baseRef` is `demo-00-baseline`; `status` is `drift_detected`.
-- Runtime `Limit` in `api/message.go` (`withPaging`) changed from 100 to 50 at line 122.
-- Both `getAppMessages` (`GET /application/{id}/message`) and `getMessages` (`GET /message`) show `runtimeDefault` 50 vs `annotationDefault` 100 and `generatedSpecDefault` 100.
+- `schemaVersion` = `1`, `checkId` = `gotify-pagination-default`, `baseRef` = `demo-00-baseline`, overall `status` = `synchronized`.
+- Runtime change: `api/message.go` / `withPaging` / `Limit`: baseline `100` → current `50` (both at line 122).
+- Both listed operations have `runtimeDefault`, `annotationDefault`, and `generatedSpecDefault` equal to `50` and status `synchronized`.
 
 **SDK interpretation / assumptions (not proven by the evidence):**
 
-- That the runtime change was intentional (or not) — **unknown from supplied evidence**.
-- That aligning docs to 50 is the preferred product outcome — recommendation only.
-- Exact regenerate-spec / detect-drift CLI invocations and repo layout beyond cited paths — **unknown from supplied evidence** where not listed above.
+- That re-running detect-drift will remain green without further code changes.
+- That ongoing maintenance after future runtime edits is sufficient process control.
+- That consumer impact is limited to incorrect default page-size assumptions (inferred from the nature of the aligned fields).
+
+**Explicitly not claimed:**
+
+- That every pagination-related test or repository reference was checked or synchronized.
+- Verification of `api/message_test.go` or any file other than `api/message.go` as named in `runtimeChange` — those are unknown from supplied evidence.
+- Numeric defaults, endpoints, or operations beyond those in the evidence.
